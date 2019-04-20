@@ -458,32 +458,38 @@ class VacBot():
         self.lifespanEvents.notify(lifespan_event)
         _LOGGER.debug("*** life_span " + type + " = " + str(lifespan))
 
-    def _handle_clean_report(self, event):
-        type = event['type']
-        try:
-            type = CLEAN_MODE_FROM_ECOVACS[type]
-            if self.vacuum['iotmq']: #Was able to parse additional status from the IOTMQ, may apply to XMPP too
-                statustype = event['st']
-                statustype = CLEAN_ACTION_FROM_ECOVACS[statustype]
-                if statustype == CLEAN_ACTION_STOP or statustype == CLEAN_ACTION_PAUSE:
-                    type = statustype
-        except KeyError:
-            _LOGGER.warning("Unknown cleaning status '" + type + "'")
-        self.clean_status = type
-        self.vacuum_status = type        
-        
-        fan = event.get('speed', None)
-        if fan is not None:
+    def _handle_clean_report(self, event):     
+        if 'type' in event:   
+            type = event['type']
             try:
-                fan = FAN_SPEED_FROM_ECOVACS[fan]
+                
+                type = CLEAN_MODE_FROM_ECOVACS[type]
+                #if self.vacuum['iotmq']: #Was able to parse additional status from the IOTMQ, may apply to XMPP too
+                if 'st' in event:
+                    statustype = event['st']
+                    statustype = CLEAN_ACTION_FROM_ECOVACS[statustype]
+                    if statustype == CLEAN_ACTION_STOP or statustype == CLEAN_ACTION_PAUSE:
+                        type = statustype
             except KeyError:
-                _LOGGER.warning("Unknown fan speed: '" + fan + "'")
-        self.fan_speed = fan
-        self.statusEvents.notify(self.vacuum_status)
-        if self.fan_speed:
-            _LOGGER.debug("*** clean_status = " + self.clean_status + " fan_speed = " + self.fan_speed)
+                _LOGGER.warning("Unknown cleaning status '" + type + "'")
+            self.clean_status = type
+            self.vacuum_status = type        
+            
+            fan = event.get('speed', None)
+            if fan is not None:
+                try:
+                    fan = FAN_SPEED_FROM_ECOVACS[fan]
+                except KeyError:
+                    _LOGGER.warning("Unknown fan speed: '" + fan + "'")
+            self.fan_speed = fan
+            self.statusEvents.notify(self.vacuum_status)
+            if self.fan_speed:
+                _LOGGER.debug("*** clean_status = " + self.clean_status + " fan_speed = " + self.fan_speed)
+            else:
+                _LOGGER.debug("*** clean_status = " + self.clean_status + " fan_speed = None")
+
         else:
-            _LOGGER.debug("*** clean_status = " + self.clean_status + " fan_speed = None")
+            _LOGGER.debug("No type in clean report'" + str(event) + "'")
 
     def _handle_battery_info(self, iq):
         try:

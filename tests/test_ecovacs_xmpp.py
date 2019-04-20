@@ -53,6 +53,51 @@ def test_subscribe_to_ctls():
     x._handle_ctl(query)
     assert_dict_equal(response, {'event': 'clean_report', 'type': 'auto'})
 
+    # Clean Ozmo
+    response = None
+    query = x.make_iq_query()
+    query.set_payload(
+        ET.fromstring('<query xmlns="com:ctl"><ctl id="72515851" ret="ok"><clean type="auto" speed="standard" st="h" t="0" a="0" s="0" tr=""/></ctl></query>'))
+
+    x._handle_ctl(query)
+    assert_dict_equal(response, {'event': 'clean_report', 'type': 'auto', 'speed': 'standard', 'st':'h', 't':'0','a':'0','s':'0', 'tr':'', 'id':'72515851', 'ret':'ok'})
+
+    # Clean Report Ozmo
+    response = None
+    query = x.make_iq_query()
+    query.set_payload(
+        ET.fromstring('<query xmlns="com:ctl"><ctl ts="287462755" td="CleanReport"><clean type="auto" speed="standard" st="s" rsn="" a="" l="" sts=""/></ctl></query>'))
+
+    x._handle_ctl(query)
+    assert_dict_equal(response, {'event': 'clean_report', 'type': 'auto', 'speed': 'standard', 'st':'s', 'rsn':'', 'a':'', 'l':'', 'sts':'', 'ts':'287462755'})
+
+    # Clean Error Ozmo
+    response = None
+    query = x.make_iq_query()
+    query.set_payload(
+        ET.fromstring('<query xmlns="com:ctl"><ctl id="72515851" ret="fail" errno="0"/></query>'))
+
+    x._handle_ctl(query)
+    assert_equals(response, None)
+
+    # Charge State Ozmo
+    response = None
+    query = x.make_iq_query()
+    query.set_payload(
+        ET.fromstring('<query xmlns="com:ctl"><ctl id="75510041" ret="ok"><charge type="Idle"/></ctl></query>'))
+  
+    x._handle_ctl(query)
+    assert_dict_equal(response, {'event': 'charge_state', 'type': 'idle', 'ret':'ok', 'id':'75510041'})
+
+    # Battery Info Ozmo
+    response = None
+    query = x.make_iq_query()
+    query.set_payload(
+        ET.fromstring('<query xmlns="com:ctl"><ctl id="22564403" ret="ok"><battery power="83"/></ctl></query>'))
+
+    x._handle_ctl(query)
+    assert_dict_equal(response, {'event': 'battery_info', 'power': '83', 'ret':'ok', 'id':'22564403'})
+
 def test_xml_to_dict():
     x = make_ecovacs_xmpp()
 

@@ -19,6 +19,28 @@ def test_handle_clean_report():
     assert_equals('edge', v.clean_status)
     assert_equals('normal', v.fan_speed)
 
+    # Clean Report missing type
+    v._handle_ctl({'event': 'clean_report','speed': 'standard'})
+    assert_equals('edge', v.clean_status)
+    assert_equals('normal', v.fan_speed)
+
+    # Clean Report from Ozmo / Mapping bot
+    v._handle_ctl({'event': 'clean_report', 'type': 'auto', 'speed': 'standard', 'st':'h', 't':'0','a':'0','s':'0', 'tr':'', 'id':'72515851', 'ret':'ok'})
+    assert_equals('stop', v.clean_status)
+    assert_equals('normal', v.fan_speed)
+
+    v._handle_ctl({'event': 'clean_report', 'type': 'auto', 'speed': 'standard', 'st':'s', 'rsn':'', 'a':'', 'l':'', 'sts':'', 'ts':'287462755'})
+    assert_equals('auto', v.clean_status)
+    assert_equals('normal', v.fan_speed)
+
+    # Charge State Ozmo
+    v._handle_ctl({'event': 'charge_state', 'type': 'idle', 'ret':'ok', 'id':'75510041'})
+    assert_equals('idle', v.charge_status)
+
+    # Battery Info Ozmo
+    v._handle_ctl({'event': 'battery_info', 'power': '83', 'ret':'ok', 'id':'22564403'})
+    assert_equals(0.83, v.battery_status)
+
     # Missing fan_speed
     v = a_vacbot()
     v._handle_ctl({'event': 'clean_report', 'type': 'border'})
