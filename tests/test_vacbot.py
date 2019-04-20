@@ -24,6 +24,10 @@ def test_handle_clean_report():
     assert_equals('edge', v.clean_status)
     assert_equals('normal', v.fan_speed)
 
+    v._handle_ctl({'id': '281448135', 'ret': 'ok', 'event': 'clean_report', 'speed': 'standard', 'st': 'h', 't': '100', 'a': '100'})
+    assert_equals('stop', v.clean_status)
+    assert_equals('normal', v.fan_speed)   
+    
     # Clean Report from Ozmo / Mapping bot
     v._handle_ctl({'event': 'clean_report', 'type': 'auto', 'speed': 'standard', 'st':'h', 't':'0','a':'0','s':'0', 'tr':'', 'id':'72515851', 'ret':'ok'})
     assert_equals('stop', v.clean_status)
@@ -51,7 +55,6 @@ def test_handle_clean_report():
     v._handle_ctl({'event': 'clean_report', 'type': 'a_type_not_supported_by_sucks', 'speed': 'a_weird_speed'})
     assert_equals('a_type_not_supported_by_sucks', v.clean_status)
     assert_equals('a_weird_speed', v.fan_speed)
-
 
              
 def test_not_iot_send_command_clean():
