@@ -19,20 +19,24 @@ def test_handle_clean_report():
     assert_equals('edge', v.clean_status)
     assert_equals('normal', v.fan_speed)
 
-    # Clean Report missing type
+    # Clean Report missing type and st
     v._handle_ctl({'event': 'clean_report','speed': 'standard'})
-    assert_equals('edge', v.clean_status)
+    assert_equals('edge', v.clean_status) #status equals last report (above which is edge)
     assert_equals('normal', v.fan_speed)
 
+    # Clean Report missing type but includes st
+    v.clean_status = None
     v._handle_ctl({'id': '281448135', 'ret': 'ok', 'event': 'clean_report', 'speed': 'standard', 'st': 'h', 't': '100', 'a': '100'})
     assert_equals('stop', v.clean_status)
     assert_equals('normal', v.fan_speed)   
     
     # Clean Report from Ozmo / Mapping bot
+    v.clean_status = None
     v._handle_ctl({'event': 'clean_report', 'type': 'auto', 'speed': 'standard', 'st':'h', 't':'0','a':'0','s':'0', 'tr':'', 'id':'72515851', 'ret':'ok'})
     assert_equals('stop', v.clean_status)
     assert_equals('normal', v.fan_speed)
 
+    v.clean_status = None
     v._handle_ctl({'event': 'clean_report', 'type': 'auto', 'speed': 'standard', 'st':'s', 'rsn':'', 'a':'', 'l':'', 'sts':'', 'ts':'287462755'})
     assert_equals('auto', v.clean_status)
     assert_equals('normal', v.fan_speed)
