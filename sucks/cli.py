@@ -183,12 +183,19 @@ def edge(frequency, minutes):
 
 @cli.command(help='cleans provided area(s), ex: "0,1"',context_settings={"ignore_unknown_options": True}) #ignore_unknown for map coordinates with negatives
 @click.option("--map-position","-p", is_flag=True, help='clean provided map position instead of area, ex: "-602,1812,800,723"')
+@click.option("--minutes","-m", type=click.FLOAT, is_flag=False, help="clean for specified number of minutes")
 @click.argument('area', type=click.STRING, required=True)
-def area(area, map_position):
+def area(area, map_position, minutes):
     if map_position:
-        return CliAction(SpotArea('start', map_position=area), wait=StatusWait('charge_status', 'returning'))    
+        if minutes:
+            return CliAction(SpotArea('start', map_position=area), wait=TimeWait(minutes * 60))
+        else:
+            return CliAction(SpotArea('start', map_position=area), wait=StatusWait('charge_status', 'returning'))    
     else:
-        return CliAction(SpotArea('start', area=area), wait=StatusWait('charge_status', 'returning'))
+        if minutes:
+            return CliAction(SpotArea('start', area=area), wait=TimeWait(minutes * 60))
+        else:
+            return CliAction(SpotArea('start', area=area), wait=StatusWait('charge_status', 'returning'))
     
 
 @cli.command(help='returns to charger')
