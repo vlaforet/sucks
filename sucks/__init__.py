@@ -11,6 +11,7 @@ import ssl
 import requests
 import stringcase
 import os
+import json
 from sleekxmppfs import ClientXMPP, Callback, MatchXPath
 from sleekxmppfs.xmlstream import ET
 from sleekxmppfs.exceptions import XMPPError
@@ -612,15 +613,19 @@ class VacBot():
         self.refresh_statuses()
         self.refresh_components()
 
-    def send_command(self, action):
+    def send_command(self, action, isjson=False):
         if not self.vacuum['iotmq']:
             self.xmpp.send_command(action.to_xml(), self._vacuum_address()) 
         else:   
             #IOTMQ issues commands via RestAPI, and listens on MQTT for status updates         
-            self.iotmq.send_command(action, self._vacuum_address())  #IOTMQ devices need the full action for additional parsing
+            self.iotmq.send_command(action, self._vacuum_address(), isjson)  #IOTMQ devices need the full action for additional parsing
             
-    def run(self, action):
-            self.send_command(action) 
+    def run(self, action, **kwargs):
+        for key,value in kwargs.items():
+            if key == "isjson" and value == True:
+                self.send_command(action, isjson=True)
+            else:     
+                self.send_command(action, kwargs) 
 
     def disconnect(self, wait=False):        
         if not self.vacuum['iotmq']:
@@ -726,19 +731,29 @@ class EcoVacsIOTMQ(ClientMQTT):
         else:
             return False
 
-    def send_command(self, action, recipient):
+    def send_command(self, action, recipient, isjson):
         if action.name == "Clean": #For handling Clean when action not specified (i.e. CLI)
             action.args['clean']['act'] = CLEAN_ACTION_TO_ECOVACS['start'] #Inject a start action
-        c = self._wrap_command(action, recipient)
-        _LOGGER.debug('Sending command {0}'.format(c))
+        if isjson:
+            c = self._wrap_command(action, recipient, isjson)
+            _LOGGER.debug('Sending command as json {0}'.format(c))        
+        else:
+            c = self._wrap_command(action, recipient)
+            _LOGGER.debug('Sending command {0}'.format(c))
         self._handle_ctl_api(action, 
-            self.__call_iotdevmanager_api(c ,verify_ssl=self.verify_ssl )
+            self.__call_iotdevmanager_api(c ,verify_ssl=self.verify_ssl), isjson
             )
         
-    def _wrap_command(self, cmd, recipient):
-        #Remove the td from ctl xml for RestAPI
-        payloadxml = cmd.to_xml()
-        payloadxml.attrib.pop("td")
+    def _wrap_command(self, cmd, recipient, isjson=False):
+        if isjson:
+            payload = cmd.args
+            payloadType = "j"
+        else:
+            #Remove the td from ctl xml for RestAPI
+            payloadxml = cmd.to_xml()
+            payloadxml.attrib.pop("td")
+            payload = ET.tostring(payloadxml).decode()
+            payloadType = "x"
           
         return {
             'auth': {
@@ -749,9 +764,9 @@ class EcoVacsIOTMQ(ClientMQTT):
                 'with': 'users',
             },
             "cmdName": cmd.name,            
-            "payload": ET.tostring(payloadxml).decode(),  
+            "payload": payload,  
                       
-            "payloadType": "x",
+            "payloadType": payloadType,
             "td": "q",
             "toId": recipient,
             "toRes": self.vacuum['resource'],
@@ -787,12 +802,15 @@ class EcoVacsIOTMQ(ClientMQTT):
                 #raise RuntimeError(
                 #"failure {} ({}) for call {} and parameters {}".format(json['error'], json['errno'], function, params))
 
-    def _handle_ctl_api(self, action, message):
-        if not message == {}:
-            resp = self._ctl_to_dict_api(action, message['resp'])
-            if resp is not None:
-                for s in self.ctl_subscribers:
-                    s(resp)                    
+    def _handle_ctl_api(self, action, message, isjson=False):
+        if not message == {}:        
+            if not isjson:
+                resp = self._ctl_to_dict_api(action, message['resp'])
+                if resp is not None:
+                    for s in self.ctl_subscribers:
+                        s(resp)                   
+            else:
+                _LOGGER.debug("{} result {}".format(action.name, message))
 
     def _ctl_to_dict_api(self, action, xmlstring):
         xml = ET.fromstring(xmlstring)
